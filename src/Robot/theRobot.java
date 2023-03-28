@@ -8,10 +8,10 @@ import java.lang.*;
 import javax.swing.JComponent;
 import javax.swing.JFrame;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 import java.net.*;
+
+import static java.lang.Math.abs;
 
 
 // This class draws the probability map and value iteration map that you create to the window
@@ -127,7 +127,7 @@ class mySmartMap extends JComponent implements KeyListener {
             }
             if (y != 0) {
                 g.setColor(gris);
-                g.drawLine(0, (int)(y * sqrHght), (int)winWidth, (int)(y * sqrHght));
+                g.drawLine(0, (int)(y * sqrHght), winWidth, (int)(y * sqrHght));
             }
         }
         for (int x = 0; x < mundo.width; x++) {
@@ -403,10 +403,7 @@ public class theRobot extends JFrame {
         
         myMaps.updateProbs(probs);
     }
-      // TODO: update the probabilities of where the AI thinks it is based on the action selected and the new sonar readings
-    //       To do this, you should update the 2D-array "probs"
-    // Note: sonars is a bit string with four characters, specifying the sonar reading in the direction of North, South, East, and West
-    //       For example, the sonar string 1001, specifies that the sonars found a wall in the North and West directions, but not in the South and East directions
+
       void updateProbabilities(int action, String sonars) {
           // your code
           double[][] norm = new double[mundo.width][mundo.height];
@@ -436,8 +433,7 @@ public class theRobot extends JFrame {
               }
           }
 
-          myMaps.updateProbs(probs); // call this function after updating your probabilities so that the
-          //  new probabilities will show up in the probability map on the GUI
+          myMaps.updateProbs(probs);
       }
 
     double transitionModel(int[] currState, int action) {
@@ -533,22 +529,123 @@ public class theRobot extends JFrame {
     // You do NOT need to write this function for this lab; it can remain as is
     int automaticAction() {
         
-        return STAY;  // default action for now
+        return STAY;
+    }
+
+    void valueIteration() {
+        double gamma = 1.0;
+        double[][] rewards = new double[mundo.width][mundo.height];
+        for (int y = 0; y < mundo.height; y++) {
+            for (int x = 0; x < mundo.width; x++) {
+                switch (mundo.grid[x][y]) {
+                    case 0:
+                        rewards[x][y] = -1;
+                        break;
+                    case 1:
+                        rewards[x][y] = 0;
+                        break;
+                    case 2:
+                        rewards[x][y] = -200;
+                        break;
+                    case 3:
+                        rewards[x][y] = 500;
+                        break;
+                }
+            }
+        }
+        // Initialize utility estimates
+        double[][] utilities = new double[mundo.width][mundo.height];
+        for (int y = 0; y < mundo.height; y++) {
+            for (int x = 0; x < mundo.width; x++) {
+                switch (mundo.grid[x][y]) {
+                    case 0:
+                        utilities[x][y] = 0;
+                        break;
+                    case 1:
+                        utilities[x][y] = 0;
+                        break;
+                    case 2:
+                        utilities[x][y] = -200;
+                        break;
+                    case 3:
+                        utilities[x][y] = 500;
+                        break;
+                }
+            }
+        }
+        double[][] temp = new double[mundo.width][mundo.height];
+        boolean change = false;
+        do {
+            change = false;
+            for (int y = 0; y < mundo.height; y++) {
+                for (int x = 0; x < mundo.width; x++) {
+                    temp[x][y] = utilities[x][y];
+                }
+            }
+            for (int y = 0; y < mundo.height; y++) {
+                for (int x = 0; x < mundo.width; x++) {
+                    if (mundo.grid[x][y] != 1 && mundo.grid[x][y] != 2 && mundo.grid[x][y] != 3) {
+                        int[] currState = {x, y};
+                        ArrayList<Double> sums = new ArrayList<>();
+                        double staySum = 0;
+                        staySum += (transitionModel(currState, 4) * temp[x][y]);
+                        staySum += (transitionModel(currState, 4) * temp[x - 1][y]);
+                        staySum += (transitionModel(currState, 4) * temp[x + 1][y]);
+                        staySum += (transitionModel(currState, 4) * temp[x][y - 1]);
+                        staySum += (transitionModel(currState, 4) * temp[x][y + 1]);
+                        sums.add(staySum);
+                        double leftSum = 0;
+                        leftSum += (transitionModel(currState, 3) * temp[x][y]);
+                        leftSum += (transitionModel(currState, 3) * temp[x - 1][y]);
+                        leftSum += (transitionModel(currState, 3) * temp[x + 1][y]);
+                        leftSum += (transitionModel(currState, 3) * temp[x][y - 1]);
+                        leftSum += (transitionModel(currState, 3) * temp[x][y + 1]);
+                        sums.add(leftSum);
+                        double rightSum = 0;
+                        rightSum += (transitionModel(currState, 2) * temp[x][y]);
+                        rightSum += (transitionModel(currState, 2) * temp[x - 1][y]);
+                        rightSum += (transitionModel(currState, 2) * temp[x + 1][y]);
+                        rightSum += (transitionModel(currState, 2) * temp[x][y - 1]);
+                        rightSum += (transitionModel(currState, 2) * temp[x][y + 1]);
+                        sums.add(rightSum);
+                        double downSum = 0;
+                        downSum += (transitionModel(currState, 1) * temp[x][y]);
+                        downSum += (transitionModel(currState, 1) * temp[x - 1][y]);
+                        downSum += (transitionModel(currState, 1) * temp[x + 1][y]);
+                        downSum += (transitionModel(currState, 1) * temp[x][y - 1]);
+                        downSum += (transitionModel(currState, 1) * temp[x][y + 1]);
+                        sums.add(downSum);
+                        double upSum = 0;
+                        upSum += (transitionModel(currState, 0) * temp[x][y]);
+                        upSum += (transitionModel(currState, 0) * temp[x - 1][y]);
+                        upSum += (transitionModel(currState, 0) * temp[x + 1][y]);
+                        upSum += (transitionModel(currState, 0) * temp[x][y - 1]);
+                        upSum += (transitionModel(currState, 0) * temp[x][y + 1]);
+                        sums.add(upSum);
+                        double max = Collections.max(sums);
+                        double maxUtil = rewards[x][y] + gamma * max;
+                        if (abs(abs(utilities[x][y]) - abs(maxUtil)) > .5)  {
+                            change = true;
+                            utilities[x][y] = maxUtil;
+                        }
+                    }
+                }
+            }
+        } while (change);
     }
     
     void doStuff() {
         int action;
-        
-        //valueIteration();  // TODO: function you will write in Part II of the lab
+
         initializeProbabilities();  // Initializes the location (probability) map
+        valueIteration();  // TODO: function you will write in Part II of the lab
         
         while (true) {
             try {
                 if (isManual)
-                    action = getHumanAction();  // get the action selected by the user (from the keyboard)
+                    action = getHumanAction();
                 else
-                    action = automaticAction(); // TODO: get the action selected by your AI;
-                                                // you'll need to write this function for part III
+                    action = automaticAction();
                 
                 sout.println(action); // send the action to the Server
                 
@@ -556,7 +653,7 @@ public class theRobot extends JFrame {
                 String sonars = sin.readLine();
                 //System.out.println("Sonars: " + sonars);
             
-                updateProbabilities(action, sonars); // TODO: this function should update the probabilities of where the AI thinks it is
+                updateProbabilities(action, sonars);
                 
                 if (sonars.length() > 4) {  // check to see if the robot has reached its goal or fallen down stairs
                     if (sonars.charAt(4) == 'w') {
