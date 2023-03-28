@@ -429,11 +429,10 @@ public class theRobot extends JFrame {
           for (Double d : temp) {
               sum += d;
           }
-          double normal = sum / temp.size();
 
           for (int y = 0; y < mundo.height; y++) {
               for (int x = 0; x < mundo.width; x++) {
-                  probs[x][y] = norm[x][y]/normal;
+                  probs[x][y] = norm[x][y]/sum;
               }
           }
 
